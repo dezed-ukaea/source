@@ -60,7 +60,7 @@ namespace sal
             ATTR_ARRAY,      ///!> JSON array type, with same element type
             ATTR_DICTIONARY, ///!> JSON object type, container of children json types
 
-            ATTR_SIGNAL, ///!> high level data model for SAL physical pulse signal
+            ATTR_DATA_OBJECT, ///!> high level data model for SAL physical pulse signal
             // ATTR_NODE    ///!> high level data model for tree node
         } AttributeType;
 
@@ -597,6 +597,7 @@ namespace sal
         {
         public:
             typedef Poco::SharedPtr<Array<T>> Ptr;
+            typedef T value_type;
 
             /*
             Array constructor.
@@ -847,12 +848,12 @@ namespace sal
 
             /*
             Decodes a Poco JSON object representation of the Array and returns an Array object.
+            https://simple-access-layer.github.io/documentation/datamodel/dataclasses/array.html
             */
             static typename Array<T>::Ptr decode(Poco::JSON::Object::Ptr json)
             {
                 Poco::JSON::Object::Ptr array_definition;
                 ShapeType shape;
-                std::string encoded_data;
 
                 // CONSIDER: treat any failure as a failure to decode
                 // diasable try and catch all block
@@ -867,25 +868,37 @@ namespace sal
                 auto input_type = array_definition->getValue<std::string>("type");
                 if (input_type != "bool" && input_type != to_dtype_name<T>())
                     throw SALException("internal element type and input json data type does not match");
+
+                /// ISSUE: there is no such field from server responsed json fiale
                 auto _encoding = array_definition->getValue<std::string>("encoding");
                 if (!(_encoding == "base64" or _encoding == "list")) // TODO: supported_encodings()
                     throw SALException("encoding is not supported");
+
                 if (!array_definition->isArray("shape"))
                     throw SALException("decoded shape is not an array");
-
+                /// NOTE: summary has "shape" but full object json does not ?
+                /// https://github.com/simple-access-layer/source/issues/25
                 // decode shape
                 shape = Array<T>::decode_shape(array_definition->getArray("shape"));
 
                 // create and populate array
                 Array<T>::Ptr arr = new Array<T>(shape);
-                if (arr->element_type_name() == "string")
+                if (Attribute::is_summary(json))
                 {
-                    Array<T>::decode_data_from_json_array(arr, array_definition->getArray("data"));
+                    arr->m_is_summary = true;
                 }
-                else // binary Base64 encoding of memory bytes
+                else
                 {
-                    auto data_str = array_definition->getValue<std::string>("data");
-                    Array<T>::decode_data(arr, data_str);
+                    arr->m_is_summary = false;
+                    if (arr->element_type_name() == "string")
+                    {
+                        Array<T>::decode_data_from_json_array(arr, array_definition->getArray("data"));
+                    }
+                    else // binary Base64 encoding of memory bytes
+                    {
+                        auto data_str = array_definition->getValue<std::string>("data");
+                        Array<T>::decode_data(arr, data_str);
+                    }
                 }
                 return arr;
             };
@@ -1143,14 +1156,14 @@ namespace sal
             };
 
             /*
-            Returns a Poco JSON object summary of the Array.
+            Returns a Poco JSON object summary of the Dictionary
             */
             virtual Poco::JSON::Object::Ptr encode_summary() const override
             {
                 auto json_obj = encode_header();
                 // new info, only for C++, but comptable with python
-                json_obj->set("count", this->attributes.size());
-                // consider also write an array of keys
+                // json_obj->set("count", this->attributes.size());
+                /// CONSIDER: also write an array of keys
                 return json_obj;
             };
 
@@ -1160,7 +1173,7 @@ namespace sal
             virtual Poco::JSON::Object::Ptr encode() const override
             {
 
-                Poco::JSON::Object::Ptr json = new Poco::JSON::Object();
+                Poco::JSON::Object::Ptr json = encode_header();
                 Poco::JSON::Object::Ptr value = new Poco::JSON::Object();
 
                 // encode each attribute
@@ -1168,20 +1181,16 @@ namespace sal
                      i != this->attributes.end(); ++i)
                     value->set(i->first, i->second->encode());
 
-                json->set("type", this->type_name());
-                json->set("value", value);
+                json->set("type", this->type_name()); /// ISSUE: no such data from server, it called _class
+                json->set("items", value);            /// documentation shows it should be "items", not "value"
                 return json;
             };
 
             /*
             Decodes a Poco JSON object representation of the Dictionary attribute.
             */
-            static Dictionary::Ptr decode(Poco::JSON::Object::Ptr json)
+            static Dictionary::Ptr decode(const Poco::JSON::Object::Ptr json)
             {
-
-                Poco::JSON::Object::Ptr contents;
-                std::vector<std::string> keys;
-                std::vector<std::string>::iterator key;
                 Dictionary::Ptr container;
 
                 // treat any failure as a failure to decode
@@ -1191,23 +1200,19 @@ namespace sal
                     if (json->getValue<std::string>("type") != TYPE_NAME_DICTIONARY)
                         throw SALException("data type does not match");
 
-                    // extract array definition
-                    contents = json->getObject("value");
+                    // extract dictionary definition
+                    // https://simple-access-layer.github.io/documentation/datamodel/dataclasses/dictionary.html
 
                     // create container object and populate
                     container = new Dictionary();
-                    contents->getNames(keys);
-                    for (key = keys.begin(); key != keys.end(); ++key)
+                    if (Attribute::is_summary(json))
                     {
-                        // CONSIDER: Null data object is ready, still skip null elements?
-                        if (contents->isNull(*key))
-                            continue;
-
-                        if (!contents->isObject(*key))
-                            throw SALException("all valid attributes definitions must be JSON objects");
-
-                        // dispatch object to the appropriate decoder
-                        container->set(*key, sal::object::decode(contents->getObject(*key)));
+                        container->m_is_summary = true;
+                    }
+                    else
+                    {
+                        decode_items(json, container);
+                        container->m_is_summary = false;
                     }
                     return container;
                 }
@@ -1221,6 +1226,28 @@ namespace sal
 
         protected:
             std::map<std::string, Attribute::Ptr> attributes;
+
+            static void decode_items(const Poco::JSON::Object::Ptr json, Dictionary::Ptr container)
+            {
+                Poco::JSON::Object::Ptr contents;
+                std::vector<std::string> keys;
+                std::vector<std::string>::iterator key;
+
+                contents = json->getObject("items");
+                contents->getNames(keys);
+                for (key = keys.begin(); key != keys.end(); ++key)
+                {
+                    // CONSIDER: Null data object is ready, still skip null elements?
+                    if (contents->isNull(*key))
+                        continue;
+
+                    if (!contents->isObject(*key))
+                        throw SALException("all valid attributes definitions must be JSON objects");
+
+                    // dispatch object to the appropriate decoder
+                    container->set(*key, sal::object::decode(contents->getObject(*key)));
+                }
+            }
         };
 
         ///

@@ -1,11 +1,10 @@
 #pragma once
 
 #include "sal_data.h"
+#include "sal_data_object.h"
 
-/** TODO:
- *  summary interface should be able to reuse Attribute base class impl
- *  encode_summary() is need as there is
- *  full data object, encode and decode needs
+/** WARNING:
+ *  This header is not part of core C++ API, no API stabilization is guaranteed
  */
 
 namespace sal
@@ -34,26 +33,6 @@ namespace sal
         char TYPE_NAME_SIGNAL_MASK[] = "signal_mask";
         char TYPE_NAME_SIGNAL_ERROR[] = "signal_error";
 
-
-        /// there is no need to implement derived class
-        /// consider: named as SignalBase
-        /// member naming can map to OPC-UA attributeIDss
-        /// https://github.com/FreeOpcUa/python-opcua/blob/master/opcua/ua/attribute_ids.py
-        class DataObject : public Attribute
-        {
-        public:
-            typedef Poco::SharedPtr<DataObject> Ptr;
-            DataObject(const std::string _dtype_name)
-                    : Attribute(ATTR_SIGNAL, _dtype_name)
-            //, m_group_name("signal")
-            {
-                m_group_name = "signal";
-            }
-            // TODO: units and datatype compatible check
-        protected:
-            std::string m_dtype;
-            // CONSIDER: keep path name here to identify this unique signal
-        };
 
         /** Mask is really bad name, it is SignalQuality in the current python code
          * in the future, more meta data, misc data may needed
@@ -165,24 +144,28 @@ namespace sal
             {
                 return m_type_name;
             }
-            const DType upper_constant() const
+            const DType constant_upper() const
             {
                 return m_upper;
             }
-            const DType lower_constant() const
+            const DType constant_lower() const
             {
                 return m_lower;
             }
-            const typename Array<DType>::Ptr upper() const
+            const typename Array<DType>::Ptr array_upper() const
             {
                 return m_upper_array;
             }
-            const typename Array<DType>::Ptr lower() const
+            const typename Array<DType>::Ptr array_lower() const
             {
                 return m_lower_array;
             }
+            //
+            const DType constant_amplitude() const
+            {
+                return (m_lower + m_upper) * 0.5;
+            }
 
-            //    const DType& amplitude() const
             bool relative() const
             {
                 return m_is_relative;
@@ -323,9 +306,13 @@ namespace sal
             }
 
             /// see python documentation
-            static Dimension::Ptr decode(const Poco::JSON::Object::Ptr json)
+            static Dimension::Ptr decode(const Poco::JSON::Object::Ptr j)
             {
-                auto unit_name = String::decode(json->getObject("units"))->value();
+                j->stringify(std::cout, 2);
+                /// Note: there is another json wrapper on the data, but the type is "branch"
+                const Poco::JSON::Object::Ptr json = j->getObject("value");
+
+                std::string unit_name = String::decode(json->getObject("units"))->value(); // why error?
                 auto temporal = Bool::decode(json->getObject("temporal"))->value();
                 Dimension::Ptr p;
                 auto class_name = String::decode(json->getObject("_class"))->value();
@@ -467,15 +454,37 @@ namespace sal
                 }
                 return j;
             }
+
+            ///  summary and full object has different "dimensions" data structure
+            ///  https://simple-access-layer.github.io/documentation/datamodel/dataclasses/signal.html
             static void decode_dimensions(const Poco::JSON::Object::Ptr json,
                                           std::vector<typename Dimension<DType>::Ptr>& dims)
             {
-                const Poco::JSON::Array::Ptr ja = json->getArray("value");
-                assert(ja && ja->size() > 0);
-                for (const auto& d : *ja) // Null Pointer error here
+                // json->stringify(std::cout, 2);
+                /// NOTE: dimension data is in "value" subobject
+                if (json->isArray("value"))
                 {
-                    const auto dj = d.extract<Poco::JSON::Object::Ptr>();
-                    dims.push_back(Dimension<DType>::decode(dj));
+                    /* keep this code, as Array is the better way to organize multiple Dimension */
+                    const Poco::JSON::Array::Ptr ja = json->getArray("value");
+                    for (const auto& d : *ja) // Null Pointer error here
+                    {
+                        const auto dj = d.extract<Poco::JSON::Object::Ptr>();
+                        dims.push_back(Dimension<DType>::decode(dj));
+                    }
+                }
+                else
+                {
+                    const Poco::JSON::Object::Ptr ja = json->getObject("value");
+                    assert(ja && ja->size() > 0);
+                    std::vector<std::string> keys;
+                    ja->getNames(keys);
+                    for (const auto& key : keys) // not Array type but a map with key "0", "1"
+                    {
+                        const auto dj = ja->getObject(key);
+                        dj->stringify(std::cout, 2);
+                        if (dj->has("temporal")) // need also filter out some key like "count"
+                            dims.push_back(Dimension<DType>::decode(dj));
+                    }
                 }
             }
         };
@@ -484,7 +493,6 @@ namespace sal
         static SummaryInterface::Ptr decode_summary(Poco::JSON::Object::Ptr json);
         // python classmethod `from_dict()`
         // static Attribute::Ptr decode(Poco::JSON::Object::Ptr json);
-
 
     } // namespace dataclass
 

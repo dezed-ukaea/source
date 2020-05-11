@@ -70,6 +70,7 @@ typedef struct _test_suite_t
     unsigned int ctrl_flags;
     unsigned int processing_flags;
     int ntestcases;
+    int ncasesrun;
     test_case_t* testcases;
 
     jmp_buf abort_jmp_buf;
@@ -84,12 +85,17 @@ char* test_case_name_get( test_case_t* self );
 
 int test_case_run( test_case_t* self );
 
+
 int test_case_finish( test_case_t* self );
 
 int test_suite_add_test_case( test_suite_t* self, const char* pszname, TEST_CASE_FUNCTION f);
 
 
 int test_suite_run_all( test_suite_t* self );
+
+int test_suite_run_name( test_suite_t* self, const char* psztestname );
+
+int test_suite_run_test_case( test_suite_t* self, test_case_t* tc );
 
 int test_suite_init( test_suite_t* self, unsigned int ctrl_flags );
 

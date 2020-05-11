@@ -4,14 +4,14 @@ CXX=g++
 BUILD_DIR ?= ./build
 SRC_DIRS ?= .
 
-SRCS := csal_attrib.cpp csal_node.cpp
+SRCS := csal_attrib.cpp csal_node.cpp csal_client.cpp
 
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o) 
 DEPS := $(OBJS:.o=.d)
 
 #INC_FLAGS := -I. -I../include
 
-CFLAGS = -g -Wall -I. -I./include -I../c_cpp/include -I./test/3rdparty/argparse
+CFLAGS = -g -Wall -I. -I./include -I../cppsal/include -I./test/3rdparty/argparse
 CPPFLAGS = -std=c++11 -fPIC
 LDFLAGS = -L$(HOME)/local/lib -L../ -L./build -lPocoFoundation -lPocoJSON -lPocoNet -lPocoNetSSL
 

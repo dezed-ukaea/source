@@ -1,14 +1,16 @@
 #ifndef __CSAL_ATTRIB_H__
 #define __CSAL_ATTRIB_H__
 
+#include "csal/detail/csal_uuid.h"
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
     typedef struct _csal_attrib_t csal_attrib_t;
-
+#if 0
     typedef const char csal_uuid_t;
-
+#endif
 #define IID_CSAL_ATTRIB "5bda9c61-3c3f-48a2-9993-dd869c8942ce"
 
 

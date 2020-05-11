@@ -207,7 +207,7 @@ int test_construction( test_case_t* tf )
     return 0;
 }
 #if 0
-int test_branch( test_suite_t* tf )
+int test_branch( test_case_t* tf )
 {
     csal_attrib_int8_t* at_int8 = csal_attrib_int8_create(8);
     csal_attrib_int16_t* at_int16 = csal_attrib_int16_create(16);
@@ -1163,7 +1163,9 @@ int test_abort( test_case_t* tc )
 
 
 
-
+#define PERM_READ  (1<<0)
+#define PERM_WRITE (1<<1)
+#define PERM_EXEC  (1<<2)
 
 
 
@@ -1183,14 +1185,19 @@ int main( int argc, const char** argv )
     int opt_verbose = 0;
     int opt_abort = 0;
     int opt_summary = 0;
-    
+   int perms = 0; 
+   
+   const char* psztest = NULL;
+
     struct argparse_option options[] = {
         OPT_HELP(),
         OPT_GROUP("Basic options"),
         OPT_BOOLEAN('v', "verbose", &opt_verbose, "verbose"),
         OPT_BOOLEAN('s', "summary", &opt_summary, "show summary"),
         OPT_BOOLEAN('a', "abort", &opt_abort, "abort on failure"),
-#if 0
+
+        OPT_STRING('t', "test", &psztest, "test to run"),
+#if 1
         OPT_GROUP("Bits options"),
         OPT_BIT(0, "read", &perms, "read perm", NULL, PERM_READ, OPT_NONEG),
         OPT_BIT(0, "write", &perms, "write perm", NULL, PERM_WRITE),
@@ -1203,17 +1210,6 @@ int main( int argc, const char** argv )
     argparse_init(&argparse, options, usage, 0);
     argparse_describe(&argparse, "\nA brief description of what the program does and how it works.", "\nAdditional description of the program after the description of the arguments.");
     argc = argparse_parse(&argparse, argc, argv);
-
-
-
-
-
-
-
-
-
-
-
 
 
     if( opt_summary )
@@ -1262,7 +1258,20 @@ int main( int argc, const char** argv )
         TS_TEST_CASE( tf, test_client );
 
 
-    test_suite_run_all( tf );
+    if( psztest )
+    {
+        char* token = strtok( (char*)psztest, " " );
+
+        while( token )
+        {
+            test_suite_run_name( tf, token );
+
+            token = strtok( NULL, " " );
+        }
+    }
+    else
+        test_suite_run_all( tf );
+
     test_suite_finish( tf );
 
     return 0;

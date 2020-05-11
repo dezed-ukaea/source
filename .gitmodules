@@ -1,0 +1,3 @@
+[submodule "clients/csal/test/3rdparty/argparse"]
+	path = clients/csal/test/3rdparty/argparse
+	url = git@github.com:cofyc/argparse.git

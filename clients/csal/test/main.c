@@ -1,8 +1,10 @@
 #include<stdio.h>
 #include <stdlib.h>
 #include<string.h>
-#include "csal/csal.h"
 
+
+#include "csal/csal.h"
+#include "argparse.h"
 #include "test_suite.h"
 
 
@@ -1149,7 +1151,11 @@ int test_client( test_case_t* tf )
 
 int test_abort( test_case_t* tc )
 {
-    TC_TEST( tc, 0 );
+    if( 0 )
+        TC_TEST( tc, 0 );
+    else
+        TC_TEST( tc, 1 );
+
     return 0;
 }
 
@@ -1161,20 +1167,62 @@ int test_abort( test_case_t* tc )
 
 
 
+static const char *const usage[] = {
+        "test_argparse [options] [[--] args]",
+            "test_argparse [options]",
+                NULL,
+};
 
-
-int main()
+int main( int argc, const char** argv )
 {
     test_suite_t _tf;
     test_suite_t* tf = &_tf;
 
     unsigned int ctrl_flags = TEST_SUITE_CTRL_NONE;
 
+    int opt_verbose = 0;
+    int opt_abort = 0;
+    int opt_summary = 0;
+    
+    struct argparse_option options[] = {
+        OPT_HELP(),
+        OPT_GROUP("Basic options"),
+        OPT_BOOLEAN('v', "verbose", &opt_verbose, "verbose"),
+        OPT_BOOLEAN('s', "summary", &opt_summary, "show summary"),
+        OPT_BOOLEAN('a', "abort", &opt_abort, "abort on failure"),
+#if 0
+        OPT_GROUP("Bits options"),
+        OPT_BIT(0, "read", &perms, "read perm", NULL, PERM_READ, OPT_NONEG),
+        OPT_BIT(0, "write", &perms, "write perm", NULL, PERM_WRITE),
+        OPT_BIT(0, "exec", &perms, "exec perm", NULL, PERM_EXEC),
+#endif
+        OPT_END(),
+    };
 
-    if( 0 )
+    struct argparse argparse;
+    argparse_init(&argparse, options, usage, 0);
+    argparse_describe(&argparse, "\nA brief description of what the program does and how it works.", "\nAdditional description of the program after the description of the arguments.");
+    argc = argparse_parse(&argparse, argc, argv);
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if( opt_summary )
+        ctrl_flags |= TEST_SUITE_CTRL_SUMMARY;
+
+    if( opt_verbose )
         ctrl_flags |= TEST_SUITE_CTRL_VERBOSE;
 
-    if( 0 )
+    if( opt_abort )
         ctrl_flags |= TEST_SUITE_CTRL_EXIT_ON_FAIL;
     
     test_suite_init( tf, ctrl_flags );
@@ -1213,6 +1261,8 @@ int main()
     if( 1 )
         TS_TEST_CASE( tf, test_client );
 
+
+    test_suite_run_all( tf );
     test_suite_finish( tf );
 
     return 0;

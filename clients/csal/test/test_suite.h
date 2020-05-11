@@ -12,6 +12,7 @@
 #define TS_TEST_CASE( tf, f ) test_suite_add_test_case( tf, #f, f )
 
 
+#define TS_UNUSED(x) ( (void)(x) )
 
 #ifdef __cplusplus
 extern "C"
@@ -88,6 +89,7 @@ int test_case_finish( test_case_t* self );
 int test_suite_add_test_case( test_suite_t* self, const char* pszname, TEST_CASE_FUNCTION f);
 
 
+int test_suite_run_all( test_suite_t* self );
 
 int test_suite_init( test_suite_t* self, unsigned int ctrl_flags );
 

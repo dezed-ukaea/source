@@ -11,7 +11,7 @@ DEPS := $(OBJS:.o=.d)
 
 #INC_FLAGS := -I. -I../include
 
-CFLAGS = -g -Wall -I. -I./include -I../c_cpp/include
+CFLAGS = -g -Wall -I. -I./include -I../c_cpp/include -I./test/3rdparty/argparse
 CPPFLAGS = -std=c++11 -fPIC
 LDFLAGS = -L$(HOME)/local/lib -L../ -L./build -lPocoFoundation -lPocoJSON -lPocoNet -lPocoNetSSL
 
@@ -33,7 +33,7 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 	$(CXX) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 test:
-	gcc -g ./test/main.c ./test/test_suite.c $(CFLAGS) $(LDFLAGS) -lcsal -o $(BUILD_DIR)/test 
+	gcc -g ./test/main.c ./test/test_suite.c $(CFLAGS) $(LDFLAGS) -lcsal ./test/3rdparty/argparse/libargparse.a -o $(BUILD_DIR)/test 
 
 .PHONY: clean test 
 	test: 

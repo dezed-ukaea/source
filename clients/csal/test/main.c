@@ -1,10 +1,9 @@
-#include<stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include<string.h>
+#include <string.h>
 
 
 #include "csal/csal.h"
-#include "argparse.h"
 #include "test_suite.h"
 
 
@@ -124,12 +123,10 @@ int test_construction( test_case_t* tf )
     csal_attrib_string_t* at_string = csal_attrib_string_create( "a string");
 
 
-
-
-
 #if 0
     csal_attrib_branch_t* at_branch = csal_attrib_branch_create();
 #endif
+
     CSAL_ATTRIBUTE_TYPE at_int8_type = csal_attrib_type( (csal_attrib_t*)at_int8 );
 
     TC_TEST( tf, CSAL_ATTR_UINT8 == csal_attrib_type( (csal_attrib_t*)at_uint8) );
@@ -253,7 +250,6 @@ int test_branch( test_case_t* tf )
 #endif
 int test_bool_array( test_case_t* tf )
 {
-
     csal_attrib_t* csal_attrib_ptr = NULL;
     csal_attrib_array_t* csal_array_ptr = NULL;
 
@@ -369,7 +365,6 @@ int test_bool_array( test_case_t* tf )
 
 int test_int8_array( test_case_t* tf )
 {
-
     csal_attrib_t* csal_attrib_ptr = NULL;
     csal_attrib_array_t* csal_array_ptr = NULL;
 
@@ -1144,11 +1139,6 @@ int test_client( test_case_t* tf )
     return err;
 }
 
-
-
-
-
-
 int test_abort( test_case_t* tc )
 {
     if( 0 )
@@ -1160,123 +1150,16 @@ int test_abort( test_case_t* tc )
 }
 
 
-
-
-
-#define PERM_READ  (1<<0)
-#define PERM_WRITE (1<<1)
-#define PERM_EXEC  (1<<2)
-
-
-
-static const char *const usage[] = {
-        "test_argparse [options] [[--] args]",
-            "test_argparse [options]",
-                NULL,
-};
-
-typedef struct app_options_t
-{
-    char** psztests;
-    size_t ntest;
-
-} app_options_t;
-
-int app_options_init( app_options_t* self )
-{
-    int err = 0;
-
-    memset( self, 0, sizeof( app_options_t ) );
-
-    return err;
-}
-
-int app_options_finish( app_options_t* self )
-{
-    int err = 0;
-    free( self->psztests );
-    return err;
-}
-
-int app_options_add_option_test( app_options_t* self, char* psz )
-{
-    int err = 0;
-
-    self->psztests = realloc( self->psztests, (self->ntest + 1) * sizeof(char*) );
-
-    *(self->psztests + self->ntest) = psz;
-    self->ntest++;
-
-    return err;
-}
-
-int option_test_cbk (struct argparse *self,const struct argparse_option *option)
-{
-    int err = 0;
-
-    void* pv = (void*)(option->data);
-    char* psz = *(char**)(option->value);
-
-    app_options_t* papp_options = (app_options_t*)pv;
-
-    app_options_add_option_test( papp_options, psz );
-
-    return err;
-}
-
-
 int main( int argc, const char** argv )
 {
-    app_options_t app_options;
-    
+
+    int ctrl_flags = 0;    
+
+    test_runner_t tr;
     test_suite_t _tf;
     test_suite_t* tf = &_tf;
 
-    unsigned int ctrl_flags = TEST_SUITE_CTRL_NONE;
-
-    int opt_verbose = 0;
-    int opt_abort = 0;
-    int opt_summary = 0;
-   
-    const char* psztest = NULL;
-
-    struct argparse_option options[] = {
-        OPT_HELP(),
-        OPT_GROUP("Basic options"),
-        OPT_BOOLEAN('v', "verbose", &opt_verbose, "verbose"),
-        OPT_BOOLEAN('s', "summary", &opt_summary, "show summary"),
-        OPT_BOOLEAN('a', "abort", &opt_abort, "abort on failure"),
-
-        OPT_STRING('t', "test", &psztest, "test to run", option_test_cbk, (intptr_t)(&app_options) ),
-#if 0
-        OPT_GROUP("Bits options"),
-        OPT_BIT(0, "read", &perms, "read perm", NULL, PERM_READ, OPT_NONEG),
-        OPT_BIT(0, "write", &perms, "write perm", NULL, PERM_WRITE),
-        OPT_BIT(0, "exec", &perms, "exec perm", NULL, PERM_EXEC),
-#endif
-        OPT_END(),
-    };
-
-    struct argparse argparse;
-
-    app_options_init( &app_options );
-
-    argparse_init(&argparse, options, usage, 0);
-    argparse_describe(&argparse, "\nA brief description of what the program does and how it works.", "\nAdditional description of the program after the description of the arguments.");
-    argc = argparse_parse(&argparse, argc, argv);
-
-
-    if( opt_summary )
-        ctrl_flags |= TEST_SUITE_CTRL_SUMMARY;
-
-    if( opt_verbose )
-        ctrl_flags |= TEST_SUITE_CTRL_VERBOSE;
-
-    if( opt_abort )
-        ctrl_flags |= TEST_SUITE_CTRL_EXIT_ON_FAIL;
-    
     test_suite_init( tf, ctrl_flags );
-
 
     TS_TEST_CASE( tf, test_constants );
 
@@ -1289,41 +1172,29 @@ int main( int argc, const char** argv )
 
     TS_TEST_CASE( tf, test_abort );
 
-    if( 1 )
-    {
-        TS_TEST_CASE( tf, test_bool_array );
-        TS_TEST_CASE( tf, test_int8_array );
-        TS_TEST_CASE( tf, test_int16_array );
-        TS_TEST_CASE( tf, test_int32_array );
-        TS_TEST_CASE( tf, test_int64_array );
+    TS_TEST_CASE( tf, test_bool_array );
+    TS_TEST_CASE( tf, test_int8_array );
+    TS_TEST_CASE( tf, test_int16_array );
+    TS_TEST_CASE( tf, test_int32_array );
+    TS_TEST_CASE( tf, test_int64_array );
 
-        TS_TEST_CASE( tf, test_uint8_array );
-        TS_TEST_CASE( tf, test_uint16_array );
-        TS_TEST_CASE( tf, test_uint32_array );
-        TS_TEST_CASE( tf, test_uint64_array );
+    TS_TEST_CASE( tf, test_uint8_array );
+    TS_TEST_CASE( tf, test_uint16_array );
+    TS_TEST_CASE( tf, test_uint32_array );
+    TS_TEST_CASE( tf, test_uint64_array );
 
-        TS_TEST_CASE( tf, test_float32_array );
-        TS_TEST_CASE( tf, test_float64_array );
-        TS_TEST_CASE( tf, test_string_array );
-    }
+    TS_TEST_CASE( tf, test_float32_array );
+    TS_TEST_CASE( tf, test_float64_array );
+    TS_TEST_CASE( tf, test_string_array );
 
 
-    if( 1 )
-        TS_TEST_CASE( tf, test_client );
+    TS_TEST_CASE( tf, test_client );
 
+    test_runner_init( &tr, argc, argv );
 
-    if( psztest )
-    {
-        size_t i = 0;
-        for( i = 0; i < app_options.ntest; ++i )
-        {
-            char* psz = *(app_options.psztests + i);
+    test_runner_run( &tr, tf );
 
-            test_suite_run_name( tf, psz );
-        }
-    }
-    else
-        test_suite_run_all( tf );
+    test_runner_finish( &tr );
 
     test_suite_finish( tf );
 

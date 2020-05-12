@@ -4,6 +4,7 @@
 #include <string.h>
 
 
+#include "argparse.h"
 #include "test_suite.h"
 
 
@@ -322,4 +323,141 @@ int test_suite_finish( test_suite_t* self )
     return 0;
 }
 
+
+
+static int test_runner_options_init( test_runner_options_t* self )
+{
+    int err = 0;
+
+    memset( self, 0, sizeof( test_runner_options_t ) );
+
+    return err;
+}
+
+static int test_runner_options_finish( test_runner_options_t* self )
+{
+    int err = 0;
+    free( self->psztests );
+    return err;
+}
+
+static int test_runner_options_add_option_test( test_runner_options_t* self, char* psz )
+{
+    int err = 0;
+
+    self->psztests = realloc( self->psztests, (self->ntest + 1) * sizeof(char*) );
+
+    *(self->psztests + self->ntest) = psz;
+    self->ntest++;
+
+    return err;
+}
+
+int option_test_cbk (struct argparse *self, const struct argparse_option* option)
+{
+    int err = 0;
+
+    void* pv = (void*)(option->data);
+    char* psz = *(char**)(option->value);
+
+    test_runner_options_t* papp_options = (test_runner_options_t*)pv;
+
+    test_runner_options_add_option_test( papp_options, psz );
+
+    return err;
+}
+
+static const char *const usage[] = {
+        "test_argparse [options] [[--] args]",
+            "test_argparse [options]",
+                NULL,
+};
+
+
+
+int test_runner_init( test_runner_t* self, int argc, const char** argv )
+{
+    int err = 0;
+    char* psztest=NULL;
+
+    memset( self, 0, sizeof( test_runner_t ) );
+
+
+    self->options = (test_runner_options_t*)malloc( sizeof( test_runner_options_t) );
+
+    struct argparse_option options[] = {
+        OPT_HELP(),
+        OPT_GROUP("Basic options"),
+        OPT_BOOLEAN('v', "verbose", &(self->options->verbose), "verbose"),
+        OPT_BOOLEAN('s', "summary", &(self->options->summary), "show summary"),
+        OPT_BOOLEAN('a', "abort", &(self->options->abort), "abort on failure"),
+        OPT_STRING('t', "test", &(psztest), "test to run", option_test_cbk, (intptr_t)((self->options) )),
+#if 0
+        OPT_GROUP("Bits options"),
+        OPT_BIT(0, "read", &perms, "read perm", NULL, PERM_READ, OPT_NONEG),
+        OPT_BIT(0, "write", &perms, "write perm", NULL, PERM_WRITE),
+        OPT_BIT(0, "exec", &perms, "exec perm", NULL, PERM_EXEC),
+#endif
+        OPT_END(),
+    };
+    struct argparse argparse;
+
+    test_runner_options_init( self->options );
+
+    argparse_init(&argparse, options, usage, 0);
+
+    argparse_describe(&argparse, "\nA brief description of what the program does and how it works.", "\nAdditional description of the program after the description of the arguments.");
+    argc = argparse_parse(&argparse, argc, argv);
+
+
+#if 1
+    if( self->options->summary )
+        self->ctrl_flags |= TEST_SUITE_CTRL_SUMMARY;
+
+    if( self->options->verbose )
+        self->ctrl_flags |= TEST_SUITE_CTRL_VERBOSE;
+
+    if( self->options->abort )
+        self->ctrl_flags |= TEST_SUITE_CTRL_EXIT_ON_FAIL;
+#endif
+
+    return err;
+}
+
+int test_runner_finish( test_runner_t* self )
+{
+    int err = 0;
+
+    test_runner_options_finish( self->options );
+
+    free( self->options );
+
+    return err;
+}
+
+int test_runner_run( test_runner_t* self, test_suite_t* ts )
+{
+    int err = 0;
+    unsigned int _ctrl_flags = ts->ctrl_flags;
+
+    ts->ctrl_flags |= self->ctrl_flags;
+
+    if( self->options->ntest )
+    {
+        size_t i = 0;
+        for( i = 0; i < self->options->ntest; ++i )
+        {
+            char* pszname = self->options->psztests[i];
+
+            test_suite_run_name( ts, pszname );
+        }
+
+    }
+    else
+        test_suite_run_all( ts );
+
+    ts->ctrl_flags = _ctrl_flags;
+
+    return err;
+}
 

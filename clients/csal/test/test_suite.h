@@ -108,6 +108,35 @@ int test_case_equal_float( test_case_t* self, float val, float expected, const c
 int test_case_equal_double( test_case_t* self, double val, double expected, const char* pszfile, unsigned int lineno );
 
 int test_suite_finish( test_suite_t* self );
+
+struct test_runner_options_t
+{
+    int verbose;
+    int abort;
+    int summary;
+   
+    char** psztests;
+    size_t ntest;
+
+};
+
+typedef struct test_runner_options_t test_runner_options_t;
+
+
+
+/*struct _test_runner_t;*/
+typedef struct _test_runner_t
+{
+    test_runner_options_t* options;
+
+    unsigned int ctrl_flags;
+} test_runner_t;
+
+int test_runner_init( test_runner_t* self, int argc, const char** argv );
+int test_runner_run( test_runner_t* self, test_suite_t* );
+
+int test_runner_finish( test_runner_t* self );
+
 #ifdef __cplusplus
 }
 #endif

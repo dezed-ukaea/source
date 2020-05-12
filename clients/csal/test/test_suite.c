@@ -43,7 +43,10 @@ int test_case_run( test_case_t* self )
         self->f( self );
  
     printf( "Test Case : %s : %d/%d passed\n",self->szname,  self->npassed, self->npassed + self->nfailed );
-    printf( "Test Case : %s : %d/%d failed\n", self->szname, self->nfailed, self->npassed + self->nfailed );
+
+
+    if( self->nfailed || self->test_suite->ctrl_flags & TEST_SUITE_CTRL_VERBOSE )
+        printf( "Test Case : %s : %d/%d failed\n", self->szname, self->nfailed, self->npassed + self->nfailed );
     
     return err;
 }
@@ -307,7 +310,10 @@ int test_suite_finish( test_suite_t* self )
     }
 
     printf( "\n" );
-    printf( "%d/%d tests failed\n", nfailed, nfailed+npassed );
+   
+    if( nfailed || self->ctrl_flags & TEST_SUITE_CTRL_VERBOSE )
+        printf( "%d/%d tests failed\n", nfailed, nfailed+npassed );
+
     printf( "%d/%d tests passed\n", npassed, nfailed+npassed );
     printf( "%d/%d test cases\n", self->ncasesrun, self->ntestcases );
 

@@ -1175,8 +1175,60 @@ static const char *const usage[] = {
                 NULL,
 };
 
+typedef struct app_options_t
+{
+    char** psztests;
+    size_t ntest;
+
+} app_options_t;
+
+int app_options_init( app_options_t* self )
+{
+    int err = 0;
+
+    memset( self, 0, sizeof( app_options_t ) );
+
+    return err;
+}
+
+int app_options_finish( app_options_t* self )
+{
+    int err = 0;
+    free( self->psztests );
+    return err;
+}
+
+int app_options_add_option_test( app_options_t* self, char* psz )
+{
+    int err = 0;
+
+    self->psztests = realloc( self->psztests, (self->ntest + 1) * sizeof(char*) );
+
+    *(self->psztests + self->ntest) = psz;
+    self->ntest++;
+
+    return err;
+}
+
+int option_test_cbk (struct argparse *self,const struct argparse_option *option)
+{
+    int err = 0;
+
+    void* pv = (void*)(option->data);
+    char* psz = *(char**)(option->value);
+
+    app_options_t* papp_options = (app_options_t*)pv;
+
+    app_options_add_option_test( papp_options, psz );
+
+    return err;
+}
+
+
 int main( int argc, const char** argv )
 {
+    app_options_t app_options;
+    
     test_suite_t _tf;
     test_suite_t* tf = &_tf;
 
@@ -1185,9 +1237,8 @@ int main( int argc, const char** argv )
     int opt_verbose = 0;
     int opt_abort = 0;
     int opt_summary = 0;
-   int perms = 0; 
    
-   const char* psztest = NULL;
+    const char* psztest = NULL;
 
     struct argparse_option options[] = {
         OPT_HELP(),
@@ -1196,8 +1247,8 @@ int main( int argc, const char** argv )
         OPT_BOOLEAN('s', "summary", &opt_summary, "show summary"),
         OPT_BOOLEAN('a', "abort", &opt_abort, "abort on failure"),
 
-        OPT_STRING('t', "test", &psztest, "test to run"),
-#if 1
+        OPT_STRING('t', "test", &psztest, "test to run", option_test_cbk, (intptr_t)(&app_options) ),
+#if 0
         OPT_GROUP("Bits options"),
         OPT_BIT(0, "read", &perms, "read perm", NULL, PERM_READ, OPT_NONEG),
         OPT_BIT(0, "write", &perms, "write perm", NULL, PERM_WRITE),
@@ -1207,6 +1258,9 @@ int main( int argc, const char** argv )
     };
 
     struct argparse argparse;
+
+    app_options_init( &app_options );
+
     argparse_init(&argparse, options, usage, 0);
     argparse_describe(&argparse, "\nA brief description of what the program does and how it works.", "\nAdditional description of the program after the description of the arguments.");
     argc = argparse_parse(&argparse, argc, argv);
@@ -1260,13 +1314,12 @@ int main( int argc, const char** argv )
 
     if( psztest )
     {
-        char* token = strtok( (char*)psztest, " " );
-
-        while( token )
+        size_t i = 0;
+        for( i = 0; i < app_options.ntest; ++i )
         {
-            test_suite_run_name( tf, token );
+            char* psz = *(app_options.psztests + i);
 
-            token = strtok( NULL, " " );
+            test_suite_run_name( tf, psz );
         }
     }
     else

@@ -1365,12 +1365,7 @@ struct _csal_attrib_branch_t
     _csal_attrib_t base;
 };
 #endif
-#if 0
-struct _csal_node_branch_t
-{
-    sal::node::Branch::Ptr sal_branch_ptr;
-};
-#endif
+
 
 
 csal_bool_t csal_attrib_is_type( csal_attrib_t* self, CSAL_ATTRIBUTE_TYPE attrib_type )
@@ -1847,62 +1842,6 @@ int csal_attrib_destroy( csal_attrib_t *self )
     return 0;
 }
 
-#if 0
-    extern "C"
-csal_node_branch_t* csal_node_branch_create( csal_node_nodeinfo_t* ni, const char* pszdesc )
-{
-    csal_node_branch_t* self = new csal_node_branch_t;
-
-    self->sal_branch_ptr = sal::node::Branch::Ptr( new sal::node::Branch() );
-    return self;
-}
-    extern "C"
-int csal_attrib_branch_set( csal_attrib_branch_t* self, const char* pszkey, csal_attrib_t* _at )
-{
-    int err = 0;
-
-    sal::object::Attribute::Ptr sal_at_ptr = _at->sal_at_ptr;
-
-    sal::object::Branch::Ptr sal_branch_ptr = self->base.sal_at_ptr.cast<sal::object::Branch>();
-
-    sal_branch_ptr->set( pszkey, sal_at_ptr );
-
-    return err;
-}
-
-    extern "C"
-csal_attrib_t* csal_attrib_branch_get( csal_attrib_branch_t* self, const char* pszkey )
-{
-    sal::object::Branch::Ptr branch = self->base.sal_at_ptr.cast<sal::object::Branch>();
-
-    sal::object::Attribute::Ptr sal_at_ptr = branch->get( pszkey );
-
-    csal_attrib_t* csal_ptr = csal_attrib_from_sal( sal_at_ptr );
-
-    return csal_ptr;
-}
-
-    extern "C"
-csal_bool csal_attrib_branch_has( csal_attrib_branch_t* self, const char* pszkey )
-{
-    sal::object::Branch::Ptr branch = self->base.sal_at_ptr.cast<  sal::object::Branch >();
-    std::string key( pszkey);
-
-    csal_bool bhas = branch->has( key );
-    return bhas;
-
-}
-    extern "C"
-int csal_attrib_branch_remove( csal_attrib_branch_t* self, const char* pszkey )
-{
-    sal::object::Branch::Ptr branch = self->base.sal_at_ptr.cast< sal::object::Branch >();
-    std::string key( pszkey);
-
-    branch->remove( key );
-    return 0;
-
-}
-#endif
 
 
 int csal_attrib_array_shape( csal_attrib_array_t* self, uint64_t* vals, uint64_t* nvals, uint64_t nval_max )
@@ -2695,10 +2634,19 @@ const char* csal_attrib_array_eltype( csal_attrib_array_t* self )
 
 
 /* put in casl_attrib when global variables are removed from headers */
+
+#if 0
 struct _csal_node_object_t
 {
     sal::node::NodeObject::Ptr sal_nodeobj_ptr;
 };
+#endif
+
+
+
+
+
+
 
 struct _csal_client_t
 {
@@ -2787,9 +2735,10 @@ int csal_client_attrib_get( csal_client_t* self, const char* pszpath, csal_bool_
     return err;
 }
 #endif
-int csal_client_list( csal_client_t* self, const char* pszpath, csal_node_object_t** ppnodeobj )
+int csal_client_list( csal_client_t* self, const char* pszpath/*, csal_node_object_t** ppnodeobj*/ )
 {
     int err = 0;
+#if 0
 
     sal::node::NodeObject::Ptr sal_node_ptr = self->sal_client->list( pszpath );
 
@@ -2798,7 +2747,7 @@ int csal_client_list( csal_client_t* self, const char* pszpath, csal_node_object
     csal_node_ptr->sal_nodeobj_ptr = sal_node_ptr;
 
     *ppnodeobj = csal_node_ptr;
-
+#endif
     return err;
 }
 
@@ -2829,10 +2778,10 @@ int csal_client_get( csal_client_t* self, const char* pszpath, csal_bool_t summa
     return err;
 }
 
-int csal_client_put( csal_client_t* self, const char* pszpath, csal_node_object_t* csal_nodeobj_ptr )
+int csal_client_put( csal_client_t* self, const char* pszpath/*, csal_node_object_t* csal_nodeobj_ptr */)
 {
     int err = 0;
-
+#if 0
     sal::node::NodeObject::Ptr sal_nodeobj_ptr = csal_nodeobj_ptr->sal_nodeobj_ptr;
 
     try
@@ -2845,7 +2794,7 @@ int csal_client_put( csal_client_t* self, const char* pszpath, csal_node_object_
     {
         err = 1;
     }
-
+#endif
     return err;
 }
 
@@ -2969,6 +2918,7 @@ int csal_node_object_destroy( csal_node_object_t* self )
 #endif
 #endif
 
+#if 0
 csal_node_object_t* csal_node_object_create( csal_node_info_t* node_info, const char* pszdescription, CSAL_NODE_TYPE node_type )
 {
     csal_node_object_t* p = new csal_node_object_t;
@@ -3022,3 +2972,213 @@ int csal_node_info_destroy( csal_node_info_t* self )
 
     return err;
 }
+#endif
+
+
+
+
+
+
+
+typedef int (*F_CSAL_NODE_CAST)( csal_node_t*, csal_uuid_t*, void** );
+
+typedef struct _csal_node_vtbl_t
+{
+    F_CSAL_NODE_CAST f_cast;
+} csal_node_vtbl_t;
+
+
+
+struct _csal_node_t
+{
+    csal_node_vtbl_t* vtbl;
+};
+
+struct _csal_node_leaf_t
+{
+    csal_node_t base;
+};
+
+struct _csal_node_branch_t
+{
+    csal_node_t base;
+};
+
+static int _csal_node_branch_cast( csal_node_t* self, csal_uuid_t* uuid, void** ppv );
+static int _csal_node_leaf_cast( csal_node_t* self, csal_uuid_t* uuid, void** ppv );
+
+static csal_node_vtbl_t _csal_node_branch_vtbl = { _csal_node_branch_cast };
+static csal_node_vtbl_t _csal_node_leaf_vtbl = {_csal_node_leaf_cast};
+
+int csal_node_cast( csal_node_t* self, csal_uuid_t* uuid, void** ppv )
+{
+    int err = 0;
+
+    err = self->vtbl->f_cast( self, uuid, ppv );
+
+    return err;
+}
+int csal_node_branch_cast( csal_node_branch_t* self, csal_uuid_t* uuid, void** ppv )
+{
+    int err = 0;
+
+    if( 0 == strcmp( uuid, IID_CSAL_NODE ) )
+    {
+        *ppv = self;
+    }
+    else if( 0 == strcmp( uuid, IID_CSAL_NODE_BRANCH ) )
+    {
+        *ppv = self;
+    }
+    else
+    {
+        err = 1;
+        *ppv = NULL;
+    }
+
+    return err;
+}
+static int _csal_node_branch_cast( csal_node_t* self, csal_uuid_t* uuid, void** ppv )
+{
+    return csal_node_branch_cast( (csal_node_branch_t*)self, uuid, ppv );
+}
+
+#if 1
+csal_node_branch_t* csal_node_branch_create( /*csal_node_nodeinfo_t* ni, */const char* pszdesc )
+{
+    csal_node_branch_t* self = new csal_node_branch_t;
+    self->base.vtbl = & _csal_node_branch_vtbl;
+
+    //self->sal_branch_ptr = sal::node::Branch::Ptr( new sal::node::Branch() );
+    return self;
+}
+
+#if 0
+int csal_node_branch_set( csal_node_branch_t* self, const char* pszkey, csal_attrib_t* _at )
+{
+    int err = 0;
+
+    //sal::object::Attribute::Ptr sal_at_ptr = _at->sal_at_ptr;
+
+    //sal::object::Branch::Ptr sal_branch_ptr = self->base.sal_at_ptr.cast<sal::object::Branch>();
+
+    //sal_branch_ptr->set( pszkey, sal_at_ptr );
+
+    return err;
+}
+
+csal_attrib_t* csal_node_branch_get( csal_node_branch_t* self, const char* pszkey )
+{
+    //sal::object::Branch::Ptr branch = self->base.sal_at_ptr.cast<sal::object::Branch>();
+
+    //sal::object::Attribute::Ptr sal_at_ptr = branch->get( pszkey );
+
+    csal_attrib_t* csal_ptr = NULL;
+    //csal_ptr = csal_attrib_from_sal( sal_at_ptr );
+
+    return csal_ptr;
+}
+
+csal_bool_t csal_node_branch_has( csal_node_branch_t* self, const char* pszkey )
+{
+    //sal::object::Branch::Ptr branch = self->base.sal_at_ptr.cast<  sal::object::Branch >();
+    //std::string key( pszkey);
+
+    //csal_bool bhas = branch->has( key );
+    return csal_false;//bhas;
+
+}
+
+int csal_node_branch_remove( csal_node_branch_t* self, const char* pszkey )
+{
+    //sal::object::Branch::Ptr branch = self->base.sal_at_ptr.cast< sal::object::Branch >();
+    //std::string key( pszkey);
+
+    //branch->remove( key );
+    return 0;
+
+}
+#endif
+
+int csal_node_leaf_cast( csal_node_leaf_t* self, csal_uuid_t* uuid, void** ppv )
+{
+    int err = 0;
+
+    if( 0 == strcmp( uuid, IID_CSAL_NODE ) )
+    {
+        *ppv = self;
+    }
+    else if( 0 == strcmp( uuid, IID_CSAL_NODE_LEAF ) )
+    {
+        *ppv = self;
+    }
+    else
+    {
+        err = 1;
+        *ppv = NULL;
+    }
+
+    return err;
+}
+static int _csal_node_leaf_cast( csal_node_t* self, csal_uuid_t* uuid, void** ppv )
+{
+    return csal_node_leaf_cast( (csal_node_leaf_t*)self, uuid, ppv );
+}
+
+
+
+csal_node_leaf_t* csal_node_leaf_create( /*csal_node_nodeinfo_t* ni, */const char* pszdesc )
+{
+    csal_node_leaf_t* self = new csal_node_leaf_t;
+    self->base.vtbl = & _csal_node_leaf_vtbl;
+    //self->sal_branch_ptr = sal::node::Branch::Ptr( new sal::node::Branch() );
+    return self;
+}
+int csal_node_leaf_set( csal_node_leaf_t* self, const char* pszkey, csal_attrib_t* _at )
+{
+    int err = 0;
+
+    //sal::object::Attribute::Ptr sal_at_ptr = _at->sal_at_ptr;
+
+    //sal::object::Branch::Ptr sal_branch_ptr = self->base.sal_at_ptr.cast<sal::object::Branch>();
+
+    //sal_branch_ptr->set( pszkey, sal_at_ptr );
+
+    return err;
+}
+
+csal_attrib_t* csal_node_leaf_get( csal_node_leaf_t* self, const char* pszkey )
+{
+    //sal::object::Branch::Ptr branch = self->base.sal_at_ptr.cast<sal::object::Branch>();
+
+    //sal::object::Attribute::Ptr sal_at_ptr = branch->get( pszkey );
+
+    csal_attrib_t* csal_ptr = NULL;
+    //csal_ptr = csal_attrib_from_sal( sal_at_ptr );
+
+    return csal_ptr;
+}
+
+csal_bool_t csal_node_leaf_has( csal_node_leaf_t* self, const char* pszkey )
+{
+    //sal::object::Branch::Ptr branch = self->base.sal_at_ptr.cast<  sal::object::Branch >();
+    //std::string key( pszkey);
+
+    //csal_bool bhas = branch->has( key );
+    return csal_false;//bhas;
+
+}
+
+int csal_node_leaf_remove( csal_node_leaf_t* self, const char* pszkey )
+{
+    //sal::object::Branch::Ptr branch = self->base.sal_at_ptr.cast< sal::object::Branch >();
+    //std::string key( pszkey);
+
+    //branch->remove( key );
+    return 0;
+
+}
+
+#endif
+
+

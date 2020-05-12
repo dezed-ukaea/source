@@ -103,6 +103,7 @@ extern "C"
 
 
 
+#if 0
 
     /* sal::node namespace wrappers */
     typedef struct _csal_node_leaftype_t csal_node_leaftype_t;
@@ -116,14 +117,6 @@ extern "C"
     typedef struct _csal_node_leaf_t csal_node_leaf_t;
 
 
-#if 0
-
-    typedef struct _csal_node_client_t csal_node_client_t;
-	sal::node::Client* sal_cient;
-#endif
-
-
-
 
 	typedef struct _csal_node_info_t csal_node_info_t;
 	csal_node_info_t* csal_node_info_create( const char* pszcls, const char* pszgroup, int version );
@@ -131,13 +124,6 @@ extern "C"
 
 
 
-
-    /* node namespace */
-    typedef enum
-    {
-        CSAL_NODE_TYPE_BRANCH
-            , CSAL_NODE_TYPE_LEAF
-    } CSAL_NODE_TYPE;
 
 
     typedef struct _csal_node_object_t csal_node_object_t;
@@ -166,6 +152,8 @@ extern "C"
 
     typedef struct _csal_node_report_t csal_node_report_t;
 
+#endif
+
 #if 0
     csal_attrib_branch_t* csal_attrib_branch_create(void);
 
@@ -189,6 +177,7 @@ extern "C"
 
 #include "csal/detail/csal_client.h"
 #include "csal/detail/csal_attrib.h"
+#include "csal/detail/csal_node.h"
 
 #ifdef __cplusplus
 //#include "sal.h"

@@ -44,8 +44,8 @@ namespace sal
         {
         public:
             typedef Poco::SharedPtr<Mask> Ptr;
-            Mask()
-                    : DataObject("signal_mask")
+            Mask(const std::string _class_name)
+                    : DataObject(_class_name)
             {
                 m_group_name = "signal_mask";
                 m_dtype = to_dtype_name<DType>();
@@ -62,18 +62,28 @@ namespace sal
             }
             virtual Poco::JSON::Object::Ptr encode_summary() const override
             {
-                Poco::JSON::Object::Ptr j = encode_header(); // attribute metadata
-                return j;                                    // no more info other than attribute metadata
+                Poco::JSON::Object::Ptr j = encode_metadata(); // attribute metadata
+                return j;                                      // no more info other than attribute metadata
             }
 
-            static Mask::Ptr decode(const Poco::JSON::Object::Ptr json)
+            static Mask::Ptr decode(const Poco::JSON::Object::Ptr j)
             {
-                Mask::Ptr p = new Mask();
-                Attribute::decode_metadata(json, p);
-                if (!Attribute::is_summary(json))
+                Mask::Ptr p = nullptr;
+                try
                 {
-                    p->m_array = UInt8Array::decode(json->getObject("status"));
-                    p->m_key = StringArray::decode(json->getObject("key"));
+                    auto json = j->getObject("value");
+                    p = new Mask(DataObject::parse_class_name(json));
+
+                    Attribute::decode_metadata(json, p);
+                    if (!DataObject::is_summary(json))
+                    {
+                        p->m_array = UInt8Array::decode(json->getObject("status"));
+                        p->m_key = StringArray::decode(json->getObject("key"));
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    SAL_REPORT_DECODE_ERROR(e, j);
                 }
                 return p;
             }
@@ -195,7 +205,7 @@ namespace sal
             static Error::Ptr decode(const Poco::JSON::Object::Ptr json)
             {
                 auto class_name = String::decode(json->getObject("_class"))->value();
-                bool is_summary = Attribute::is_summary(json);
+                bool is_summary = DataObject::is_summary(json);
                 if (is_summary)
                 {
                     Error::Ptr p;
@@ -292,13 +302,13 @@ namespace sal
 
             virtual Poco::JSON::Object::Ptr encode() const override
             {
-                Poco::JSON::Object::Ptr j = encode_summary();
+                Poco::JSON::Object::Ptr j = this->encode_summary();
                 j->set("data", m_data->encode());
                 return j;
             }
             virtual Poco::JSON::Object::Ptr encode_summary() const override
             {
-                Poco::JSON::Object::Ptr j = encode_header();
+                Poco::JSON::Object::Ptr j = this->encode_metadata();
                 j->set("units", m_units);
                 j->set("length", m_length);
                 j->set("temporal", m_temporal);
@@ -308,8 +318,9 @@ namespace sal
             /// see python documentation
             static Dimension::Ptr decode(const Poco::JSON::Object::Ptr j)
             {
-                j->stringify(std::cout, 2);
-                /// Note: there is another json wrapper on the data, but the type is "branch"
+                // j->stringify(std::cout, 2);
+                /// Note: there is another json wrapper on the data,
+                // but `type` = "branch"
                 const Poco::JSON::Object::Ptr json = j->getObject("value");
 
                 std::string unit_name = String::decode(json->getObject("units"))->value(); // why error?
@@ -319,7 +330,7 @@ namespace sal
                 if (class_name == "coordinate_array")
                 {
                     typename Array<DType>::Ptr a;
-                    if (Attribute::is_summary(json))
+                    if (DataObject::is_summary(json))
                     {
                         // length = array_shape
                         a = nullptr;
@@ -395,7 +406,7 @@ namespace sal
             }
             virtual Poco::JSON::Object::Ptr encode_summary() const override
             {
-                Poco::JSON::Object::Ptr j = encode_header();
+                Poco::JSON::Object::Ptr j = encode_metadata();
                 j->set("units", m_units);
                 j->set("dimensions", encode_dimensions());
                 j->set("mask", m_mask->encode());
@@ -421,7 +432,7 @@ namespace sal
                 // all meta data "_class, _group" does not needs to be decoded
                 Attribute::decode_metadata(json, sig);
                 sig->m_units = String::decode(json->getObject("units"))->value();
-                if (Attribute::is_summary(json))
+                if (DataObject::is_summary(json))
                 {
                     sig->m_is_summary = true;
                 }
@@ -439,6 +450,7 @@ namespace sal
                 }
                 if (json->has("mask") and json->getObject("mask"))
                 {
+                    /// consider: Mask does not needs to be a template class?
                     sig->m_mask = Mask<DType>::decode(json->getObject("mask"));
                 }
                 return sig;
